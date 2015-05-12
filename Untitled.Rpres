@@ -1,0 +1,285 @@
+Some options for figures with R
+========================================================
+author: David Hood
+date: 5 May 2015
+
+base plot
+========================================================
+
+Baseplot is an additive pen and paper model.
+
+- Add to figure with individual functions
+- par() sets pen and paper settings
+- May need to write a lot of custom code
+- Enough code can do anything
+
+***
+
+```{r, echo=FALSE, cache=TRUE}
+#Environmental Lead Hypothesis and NZ Data
+# http://www.motherjones.com/environment/2013/01/lead-crime-link-gasoline
+# Recorded Crime Source: Statistics New Zealand, Infoshare, LTD002AA
+#website: http://www.stats.govt.nz/infoshare/Default.aspx
+crime <- read.csv("LTD387201_20150503_020443_2.csv", stringsAsFactors=FALSE, skip=2, header=FALSE, nrows=137)
+names(crime) <- c("year","recordCrime")
+#population: Statistics New Zealand, http://www.stats.govt.nz/~/media/Statistics/browse-categories/population/estimates-projections/national-pop-estimates/historical-pop-estimates.xls, Table 1 
+#website: http://www.stats.govt.nz/browse_for_stats/population/estimates_and_projections/historical-population-tables.aspx
+library(xlsx)
+pop <- read.xlsx("historical-pop-estimates.xls", sheetName = "Table 1", rowIndex = c(11:75,77:100), colIndex = c(2,3,5,7), header=FALSE, stringsAsFactors=FALSE)
+names(pop) <- c("year", "male","female","total")
+pop$year <- gsub("[^1234567890]","",pop$year) #getting rid of provision note in data so purely numbers
+pop$year <- as.integer(pop$year)
+percapita <- merge(crime, pop, by="year")
+percapita$value <- percapita$recordCrime / percapita$total
+colfunc <- colorRampPalette(c("yellow", "red")) #phase in gradient colours, as will be faking a gradiant line by ploting single pixels
+```
+
+```{r,echo=FALSE, cache=TRUE}
+#Hidding this chunk and not EVAL following one to display key functions after graph
+par(mar= c(4,5,2,2))
+plot(pop$year, percapita$value, type="l", xlab="year", ylab="annual per capita\nrecorded crime", ylim=c(0,.15), xlim=c(1910,2030), frame.plot=FALSE)
+points(seq(1986,1996,length.out=100), rep(0.14,100), pch=".", col=colfunc(100))
+lines(c(1986,1986), c(0.09,0.145), col="yellow")
+lines(c(1996,1996), c(0.09,0.145), col="red")
+text(1986, 0.147, labels="phase out", cex=0.6, pos=4, offset=0)
+```
+
+```{r, eval=FALSE}
+plot(); points(); lines(); text();
+```
+
+
+lattice
+========================================================
+
+Extending R for easy multivariant relationships
+
+- can express groups in formula
+- ~ numerical relationship
+- | conditional on
+- * combinations of
+
+complicated to customise individual panels
+
+```{r, echo=FALSE, cache=TRUE}
+# http://quakesearch.geonet.org.nz earthquakes 1975-2014 inclusive Mag > 4
+earthq <- read.csv("quakes.csv", stringsAsFactors=FALSE, header=TRUE)
+earthq$origintime <- as.POSIXct(earthq$origintime)
+earthq$longitude[earthq$longitude < 0] <- earthq$longitude[earthq$longitude < 0] * -1
+library(lubridate)
+earthq$year <- year(earthq$origintime)
+```
+
+
+***
+
+```{r, echo=FALSE, cache=TRUE}
+library(lattice)
+xyplot(magnitude~depth|year, data=earthq, main="Earthquake Magnitude and Depth by year (Mag > 4, 1975-2014)")
+```
+
+```{r, eval=FALSE}
+xyplot(magnitude ~ depth | year)
+```
+
+ggplot
+========================================================
+Grammar of Graphics 
+
+- aesthetics (data's role)
+- geometry (layers of shapes)
+- stats (transformations)
+- theme (look)
+
+```{r, eval=FALSE}
+ggplot(data= censusnorel, aes(x=year, y=prop)) + geom_point( alpha=0.05) + geom_smooth( method="lm")
+```
+
+***
+```{r, echo=FALSE, cache=TRUE}
+censusI2 <- read.csv("2013-mb-dataset-Total-New-Zealand-Individual-Part-2.csv", stringsAsFactors=FALSE)
+regions <- censusI2[46631:48642,]
+y2001norel <- data.frame(region=regions$Code, prop = as.numeric(regions$X2001_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._No_Religion) / as.numeric(regions$X2001_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._Total_people_stated))
+y2001norel$year <- 2001
+y2006norel <- data.frame(region=regions$Code, prop = as.numeric(regions$X2006_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._No_Religion) / as.numeric(regions$X2006_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._Total_people_stated))
+y2006norel$year <- 2006
+y2013norel <- data.frame(region=regions$Code, prop = as.numeric(regions$X2013_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._No_Religion) / as.numeric(regions$X2013_Census_religious_affiliation_.total_responses..2._for_the_census_usually_resident_population_count.1._Total_people_stated))
+y2013norel$year <- 2013
+censusnorel <- rbind(y2001norel, y2006norel, y2013norel)
+library(ggplot2)
+ggplot(data=censusnorel, aes(x=year, y=prop)) + geom_point(alpha=0.05) + geom_smooth(method="lm")
+```
+
+maps
+========================================================
+maps & ggmap
+
+- shapes ploted on a latitude and longitude
+- plot other things on top
+- mapsdata has High Quality NZ outline map
+
+```{r, eval=FALSE}
+map(); points(); title();
+```
+
+
+***
+```{r, echo=FALSE, cache=TRUE}
+library(maps) #for mapping functions
+library(mapdata) #for Hire Resolution NZ map
+map("nzHires", xlim = c(166.2, 179.2), ylim = c(-47.4, -34.4), fill=TRUE, col=grey(0.9), main="Earthquakes")
+points(earthq$longitude,earthq$latitude, pch=".", col="#FF000033")
+title(main = "Earthquakes")
+```
+
+plotrix
+========================================================
+plotting cycles (also ggplot)
+
+- round grid
+- normally tricky to position
+
+```{r, eval=FALSE}
+polar.plot(ebyM$count, ebyM$month * 30, rp.type="p", lwd=2, line.col="red", xaxt='n', labels="", show.grid.labels=FALSE, radial.lim= c(0,max(ebyM$count)), main="Earthquakes annual cycle")
+```
+
+
+
+***
+```{r, echo=FALSE, cache=TRUE}
+library(lubridate)
+library(plotrix)
+ebyMY <- aggregate(publicid ~ month(origintime) + year(origintime), data=earthq, FUN=length)
+names(ebyMY) <- c("month", "year", "count")
+ebyM <- aggregate(count ~ month, data=ebyMY, FUN=mean)
+library(plotrix)
+polar.plot(ebyM$count, ebyM$month * 30, rp.type="p", lwd=2, line.col="red", xaxt='n', labels="", show.grid.labels=FALSE, radial.lim=c(0,max(ebyM$count)), main="Earthquakes annual cycle")
+#shows why you should inculde error ranges- a couple of big events with aftershocs create the illusion of a symetric 6 month cycle.
+```
+
+rgl
+========================================================
+plotting 3D graphs
+
+- variety of options
+- extension of 2D
+
+```{r, eval=FALSE, cache=TRUE}
+library(rgl)
+plot3d(earthq$latitude, earthq$longitude, earthq$depth, col="#FF000022", box=FALSE, xlab="latitude",  ylab="longitude", zlab="depth")  
+rgl.snapshot("rgl.png", fmt="png")
+```
+***
+
+![earthquake latitude, longitude, depth](rgl.png)
+
+igraph
+========================================================
+plotting relationships
+
+- nodes (connection points)
+- edges (connecting lines)
+```{r, eval=FALSE, cache=TRUE}
+G <- graph( sample(1:20, 16, replace=TRUE), directed = FALSE )
+plot(G, layout = layout.fruchterman. reingold, edge.width=2)
+```
+***
+```{r, echo=FALSE, cache=TRUE}
+library(igraph)
+set.seed(367)
+G <- graph( sample(1:20,16, replace=TRUE), directed = FALSE )
+plot(G, layout = layout.fruchterman.reingold, edge.width=2)
+```
+
+rgdal
+========================================================
+Use ESRI shapefiles (GIS)
+
+- GDAL talks to ESRI shapefiles
+- rgdal talks to GDAL
+
+so with mapfiles of areas, and data of areas, you can make maps
+
+```{r, eval=FALSE}
+aubase <- readOGR(...)
+#prepare fill cols
+plot(mapdata, col= y2013norelmap$fillc)
+```
+***
+```{r, echo=FALSE,  cache=TRUE, message=FALSE, warning=FALSE, include=FALSE}
+#note: this data reports an error in the zip file but works OK
+#download.file("http://www3.stats.govt.nz/digitalboundaries/census/ESRI_Census_Based_2013_NZTM.zip", destfile="ESRI_Census_Based_2013_NZTM.zip", mode="wb")
+#unzip("ESRI_Census_Based_2013_NZTM.zip")
+library(rgdal)
+aubase <- readOGR("2013 Digital Boundaries Generalised Full", "AU2013_GV_Full")
+```
+```{r, echo=FALSE,  cache=TRUE}
+y2013norel$fillc <- "#DDDDDD"
+y2013norel$fillc[y2013norel$prop > 0.5] <- "#FF0000"
+y2013norel$fillc[is.na(y2013norel$prop)] <- "#DDDDDD"
+#have mapcoords & not water
+y2013norelmap <- y2013norel[y2013norel$region %in% aubase$AU2013 & as.numeric(as.character(y2013norel$region)) < 614502,]
+#match the areas with the values
+mapdata <- aubase[aubase$AU2013 %in% y2013norelmap$region,]
+y2013norelmap <- y2013norelmap[order(y2013norelmap$region),]
+mapdata <- mapdata[order(mapdata$AU2013),]
+plot(mapdata,   col=y2013norelmap$fillc, border=NA, main="2013(red) No Religion outnumbers Religion")
+```
+
+seewave
+========================================================
+can plot frequency spectrographs and related data
+
+- includes tuneR data (mp3s etc)
+
+```{r, eval=FALSE}
+call <- readMP3("tui-song-50.mp3")
+spectro(call, f=44100, wl=1024, flim=c(0,5))
+```
+
+***
+```{r, echo=FALSE,  cache=TRUE, message=FALSE, warning=FALSE, include=FALSE}
+library(tuneR)
+library(seewave)
+```
+```{r, echo=FALSE, cache=TRUE}
+call <- readMP3("tui-song-50.mp3")
+spectro(call, f=44100, wl=1024, flim=c(0,5))
+
+```
+
+vaguely related
+========================================================
+
+## rcharts
+
+Turn charts into interactive javascript based charts with embedded data that can be placed on the web
+
+## shiny
+
+Web platform where you can load up a script and user interface, and people can use R via the web through your interface to do the things in the script. This can include displaying charts.
+
+sources
+========================================================
+
+NZ recorded crime: [Statistics New Zealand, Infoshare, LTD002AA] (http://www.stats.govt.nz/infoshare/Default.aspx)
+
+NZ population: [Statistics New Zealand, Population Tables, Table 1] (http://www.stats.govt.nz/browse_for_stats/population/estimates_and_projections/historical-population-tables.aspx)
+
+Earthquakes 1974-2014: [Geonet](http://quakesearch.geonet.org.nz)
+
+NZ census: [Statistics New Zealand]( http://www.stats.govt.nz/Census/2013-census/data-tables/meshblock-dataset.aspx)
+
+NZ census shapefiles: [Statistics New Zealand](http://www.stats.govt.nz/browse_for_stats/Maps_and_geography/Geographic-areas/digital-boundary-files.aspx)
+
+Tui call: [Department of Conservation](http://www.doc.govt.nz/nature/native-animals/birds/bird-songs-and-calls/)
+
+
+
+
+
+
+
+
+
+
